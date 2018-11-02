@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Heatmaps</title>
+    <link rel="stylesheet" href="static/style.css">
+  </head>
+  <body>
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300,700|Open+Sans:400,300,700,600' rel='stylesheet' type='text/css'>
+  <div>
+      <!--Info Panel Side-->
+      <div class="left">
+          <h2>Air Quality Map</h2>
+          <p class="intro">An interactive map showing air quality measured using our IoT Product
+          <div class="ui-state-highlight ui-corner-all" style="padding: 7px;">
+              <strong>Filter by Price:</strong>
+              <span id="currentRange"></span>
+              <div class="clear">&nbsp;</div>
+              <div id="slider"> </div>
+          </div>
+
+          <div class="clear">&nbsp;</div>
+
+          <div class="ui-state-highlight ui-corner-all" style="padding: 5px;">
+              <p>
+                  <strong>Zoom Level:</strong>
+                  <input id="spinner" value="12" readonly="readonly" />
+              </p>
+          </div>
+
+          <div class="clear">&nbsp;</div>
+
+          <div id="listing">
+
+          </div>
+
+      </div>
+
+      <!--Map Side-->
+      <!--<div class="right" id="hotelsMap"></div>-->
+      <div class="right" id="map"></div>
+
+
+      <div id="tabs" style="display:none;">
+          <ul>
+              <li><a href="#info">Info</a></li>
+              <li><a href="#facilities">Facilities</a></li>
+              <li><a href="#attractions">Attractions</a></li>
+          </ul>
+          <div id="info">
+              Proin elit arcu, rutrum commodo, vehicula tempus, commodo a, risus. Curabitur nec arcu. Donec sollicitudin mi sit amet mauris. Nam elementum quam ullamcorper ante. Etiam aliquet massa et lorem. Mauris dapibus lacus auctor risus. Aenean tempor ullamcorper
+              leo. Vivamus sed magna quis ligula eleifend adipiscing. Duis orci. Aliquam sodales tortor vitae ipsum. Aliquam nulla. Duis aliquam molestie erat. Ut et mauris vel pede varius sollicitudin. Sed ut dolor nec orci tincidunt interdum. Phasellus ipsum.
+              Nunc tristique tempus lectus.
+          </div>
+          <div id="facilities">
+              <ol>
+                  <li>High Speed Internet</li>
+                  <li>Health Club</li>
+                  <li>Airport pickup and drop</li>
+                  <li>Bar</li>
+                  <li>Cultural Activities</li>
+              </ol>
+          </div>
+          <div id="attractions">
+              <ol>
+                  <li>International Airport - 45 minutes/16.00 Kms</li>
+                  <li>New Delhi Railway Station - 10 minutes/3.00 Kms</li>
+              </ol>
+          </div>
+      </div>
+  </div>
+  <!--<div id="floating-panel">-->
+      <!--<div class="group">-->
+          <!--<div class="subject">Radius <span id=radiusNum>21</span></div>-->
+          <!--<button onclick="changeRadius(true)">Up</button>-->
+          <!--<button onclick="changeRadius(false)">Down</button>-->
+      <!--</div>-->
+      <!--<div class="group">-->
+          <!--<div class="subject">Intensity <span id=intensityNum>200</span></div>-->
+          <!--<button onclick="changeIntensity(true)">Up</button>-->
+          <!--<button onclick="changeIntensity(false)">Down</button>-->
+      <!--</div>-->
+      <!--<div class="group">-->
+          <!--<div class="subject">Opacity <span id=opacityNum>.6</span></div>-->
+          <!--<button onclick="changeOpacity(true)">Up</button>-->
+          <!--<button onclick="changeOpacity(false)">Down</button>-->
+      <!--</div>-->
+    <!--</div>-->
+    <!--<div id="map"></div>-->
+
+    <script>
+      const maxI = 200, rad = 21, opac = .6;
+      var map, heatmap;
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 15,
+          center: {lat: 12.92364, lng: 77.50202},
+          mapTypeId: 'roadmap'
+        });
+
+        fetch('data').then(function(response) {
+          response.json().then(function(result) {
+            let locations = result.locations.map((val) => {
+              return {location: new google.maps.LatLng(val.latitudeE7 * (10 ** -7), val.longitudeE7 * (10 ** -7),), weight: 20};
+            })
+              console.log(locations);
+
+            heatmap = new google.maps.visualization.HeatmapLayer({
+              data: locations,
+              map: map,
+              maxIntensity: maxI,
+              radius: rad,
+              opacity: opac
+            });
+          });
+        });
+      }
+
+      // Function to change the radius of data points on heatmap
+      function changeRadius(bool) {
+        const step = 3, min = 0, max = 50;
+        let current = heatmap.get('radius');
+        let newValue = toggleUpDown(bool, current, step, min, max);
+
+        heatmap.set('radius', newValue);
+        document.getElementById("radiusNum").innerText = newValue;
+      };
+
+      // Function to change the opacity of the heatmap
+      function changeOpacity(bool) {
+        const step = .2, min = 0, max = 1;
+        let current = heatmap.get('opacity');
+        let newValue = toggleUpDown(bool, current, step, min, max);
+        let rounded = round(newValue, 1);
+
+        heatmap.set('opacity', rounded);
+        document.getElementById("opacityNum").innerText = rounded;
+      }
+
+      // Function to change maxIntensity of the heatmap
+      function changeIntensity(bool) {
+        const step = 25, min = 0, max = 1000;
+        let current = heatmap.get('maxIntensity');
+        let newValue = toggleUpDown(bool, current, step, min, max);
+
+        heatmap.set('maxIntensity', newValue);
+        document.getElementById("intensityNum").innerText = newValue;
+      };
+
+      // Changes our toggle values and keeps them within our min/max values
+      function toggleUpDown(bool, current, step, min, max){
+        if (bool && current >= max) return current;
+        if (!bool && current <= min) return current;
+
+        if (bool) return current + step;
+        return current - step;
+      }
+
+      // Used to round the opacity toggle to one decimal place
+      function round(value, precision) {
+        var multiplier = Math.pow(10, precision || 0);
+        return Math.round(value * multiplier) / multiplier;
+      }
+
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6pzh7K_Cpo4NSubwAqURIbWQXl91ogtw&libraries=visualization&callback=initMap">
+    </script>
+  </body>
+</html>
